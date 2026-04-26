@@ -1,0 +1,41 @@
+{
+  "users": [
+    {
+      "id": "c4fc5ed5-4325-4c15-9802-f2bf4becf6a2",
+      "username": "Harshitha",
+      "passwordHash": "$2b$10$vDYc59NQxzxddxrEFd6Tru/zsFg63HNCMAT9kP8vyNi7gGlbuE80."
+    },
+    {
+      "id": "efabe5de-67c6-40ef-bab8-d96fa136cf1d",
+      "username": "HarshithaRao",
+      "passwordHash": "$2b$10$ICoDPUltnQr.QWol7BN2lO6OMpjz8.JwUkE4Gr4zf2Rk3L2846.ky"
+    }
+  ],
+  "watchlists": {
+    "c4fc5ed5-4325-4c15-9802-f2bf4becf6a2": [
+      "bitcoin",
+      "ethereum",
+      "tether"
+    ],
+    "efabe5de-67c6-40ef-bab8-d96fa136cf1d": [
+      "solana",
+      "usd-coin",
+      "binancecoin"
+    ]
+  },
+  "portfolios": {
+    "c4fc5ed5-4325-4c15-9802-f2bf4becf6a2": [
+      {
+        "coinId": "cardano",
+        "amount": 1.5,
+        "buyPrice": 0.249068
+      },
+      {
+        "coinId": "ethereum",
+        "amount": 0.4,
+        "buyPrice": 2311.03
+      }
+    ],
+    "efabe5de-67c6-40ef-bab8-d96fa136cf1d": []
+  }
+}

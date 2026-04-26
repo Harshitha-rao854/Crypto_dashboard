@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+/* Use class-based dark mode via <html class="dark"> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+* {
+  transition-property: background-color, color, border-color, fill, stroke;
+  transition-duration: 250ms;
+  transition-timing-function: ease;
+}
+
+@keyframes flashUp {
+  0% { background-color: rgba(16, 185, 129, 0.35); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flashDown {
+  0% { background-color: rgba(239, 68, 68, 0.35); }
+  100% { background-color: transparent; }
+}
+
+.flash-up {
+  animation: flashUp 700ms ease-out;
+}
+
+.flash-down {
+  animation: flashDown 700ms ease-out;
+}
