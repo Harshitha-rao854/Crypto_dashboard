@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# cryptoCurrencyDashboard
-=======
 ## Crypto Market Dashboard
 
 High-fidelity crypto market dashboard built with **React + Vite**, **Tailwind CSS**, and **Recharts**, backed by **CoinGecko** (via a small local proxy API).
@@ -72,24 +69,43 @@ Click deploy. Vercel will:
 - Serve frontend from `dist`
 - Route `/api/*` to the serverless API
 
-#### Important backend persistence note
-- On Vercel, local file writes are not persistent.
-- This project now uses **in-memory DB fallback** on Vercel for auth/watchlist/portfolio.
-- That means user data may reset across deployments/cold starts.
-- For production persistence, connect a real DB (e.g., Supabase, Neon, MongoDB Atlas, PlanetScale).
+#### Production persistence with Supabase (recommended)
+The backend now supports Supabase for persistent auth/watchlist/portfolio storage.
+If Supabase env vars are not set, it falls back to local/in-memory storage.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+##### A) Create tables in Supabase SQL editor
+```sql
+create table if not exists public.users (
+  id uuid primary key,
+  username text not null unique,
+  password_hash text not null,
+  created_at timestamptz not null default now()
+);
 
-Currently, two official plugins are available:
+create table if not exists public.watchlists (
+  user_id uuid primary key references public.users(id) on delete cascade,
+  coin_ids jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+create table if not exists public.portfolios (
+  user_id uuid primary key references public.users(id) on delete cascade,
+  holdings jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+```
 
-## React Compiler
+##### B) Set Vercel env vars
+- `JWT_SECRET` = long random string
+- `SUPABASE_URL` = your Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` = service role key (server-side only)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+##### C) Redeploy
+After adding env vars, redeploy Vercel.
+`/api/health` will return storage mode (`supabase` or `local`) to confirm.
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
->>>>>>> 0c14327 (initial commit)
+### CoinGecko retry/backoff
+Backend CoinGecko calls include a small retry strategy for rate limits and transient errors:
+- retries on `429` and `5xx`
+- exponential backoff + jitter
+- honors `Retry-After` header when available

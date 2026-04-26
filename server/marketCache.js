@@ -2,6 +2,35 @@ import axios from "axios";
 
 const cache = new Map();
 const TTL_MS = 10000;
+const MAX_RETRIES = 3;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shouldRetry(error) {
+  const status = error?.response?.status;
+  if (!status) return true;
+  return status === 429 || status >= 500;
+}
+
+async function requestWithRetry(url, config = {}) {
+  let lastError;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
+    try {
+      return await axios.get(url, { timeout: 12000, ...config });
+    } catch (error) {
+      lastError = error;
+      if (!shouldRetry(error) || attempt === MAX_RETRIES - 1) break;
+
+      const retryAfterHeader = Number(error?.response?.headers?.["retry-after"]);
+      const retryAfterMs = Number.isFinite(retryAfterHeader) ? retryAfterHeader * 1000 : null;
+      const backoffMs = retryAfterMs ?? 400 * 2 ** attempt + Math.floor(Math.random() * 250);
+      await sleep(backoffMs);
+    }
+  }
+  throw lastError;
+}
 
 async function fromCache(key, loader) {
   const now = Date.now();
@@ -15,7 +44,7 @@ async function fromCache(key, loader) {
 
 export async function getMarkets() {
   return fromCache("markets-usd", async () => {
-    const res = await axios.get("https://api.coingecko.com/api/v3/coins/markets", {
+    const res = await requestWithRetry("https://api.coingecko.com/api/v3/coins/markets", {
       params: {
         vs_currency: "usd",
         order: "market_cap_desc",
@@ -31,8 +60,8 @@ export async function getMarkets() {
 export async function getCoinDetails(coinId) {
   return fromCache(`coin-${coinId}`, async () => {
     const [details, history] = await Promise.all([
-      axios.get(`https://api.coingecko.com/api/v3/coins/${coinId}`),
-      axios.get(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart`, {
+      requestWithRetry(`https://api.coingecko.com/api/v3/coins/${coinId}`),
+      requestWithRetry(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart`, {
         params: { vs_currency: "usd", days: 30 },
       }),
     ]);
@@ -58,7 +87,7 @@ export async function getCoinDetails(coinId) {
 export async function getMarketsByCurrency(vsCurrency = "usd") {
   const currency = String(vsCurrency || "usd").toLowerCase();
   return fromCache(`markets-${currency}`, async () => {
-    const res = await axios.get("https://api.coingecko.com/api/v3/coins/markets", {
+    const res = await requestWithRetry("https://api.coingecko.com/api/v3/coins/markets", {
       params: {
         vs_currency: currency,
         order: "market_cap_desc",
@@ -78,8 +107,8 @@ export async function getCoinDetailsByCurrency(coinId, vsCurrency = "usd", days 
 
   return fromCache(`coin-${coinId}-${currency}-${safeDays}`, async () => {
     const [details, history] = await Promise.all([
-      axios.get(`https://api.coingecko.com/api/v3/coins/${coinId}`),
-      axios.get(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart`, {
+      requestWithRetry(`https://api.coingecko.com/api/v3/coins/${coinId}`),
+      requestWithRetry(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart`, {
         params: { vs_currency: currency, days: safeDays },
       }),
     ]);
