@@ -13,20 +13,11 @@ import {
 
 const app = express();
 
-const allowedOrigins = new Set([
-  "http://localhost:5173",
-  "http://localhost:3000",
-  process.env.FRONTEND_URL,
-  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
-].filter(Boolean));
-
 app.use(
   cors({
-    origin(origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.has(origin)) return callback(null, true);
-      return callback(new Error("Not allowed by CORS"));
-    },
+    // For this project, allow same-origin and deployed clients without strict origin blocking.
+    // This avoids preflight/network failures on Vercel preview/production URLs.
+    origin: true,
     credentials: true,
   })
 );
