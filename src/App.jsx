@@ -387,7 +387,7 @@ export default function App() {
               search={search}
               setSearch={setSearch}
               suggestions={searchSuggestions}
-              onPickSuggestion={(coin) => navigate(`/coin/${coin.id}`)}
+              onPickSuggestion={(coin) => navigate(`/coin/${coin.id}`, { state: { coin } })}
             />
             <MarketControls
               filterBy={filterBy}
@@ -532,7 +532,7 @@ export default function App() {
                   <CryptoTable
                     data={pagedData}
                     vsCurrency={vsCurrency}
-                    onSelect={(coin) => navigate(`/coin/${coin.id}`)}
+                    onSelect={(coin) => navigate(`/coin/${coin.id}`, { state: { coin } })}
                     toggleFav={toggleFav}
                     favorites={visibleFavorites}
                     priceTrends={priceTrends}
@@ -588,7 +588,7 @@ export default function App() {
                   <CryptoTable
                     data={watchlistFilteredData}
                     vsCurrency={vsCurrency}
-                    onSelect={(coin) => navigate(`/coin/${coin.id}`)}
+                    onSelect={(coin) => navigate(`/coin/${coin.id}`, { state: { coin } })}
                     toggleFav={toggleFav}
                     favorites={visibleFavorites}
                     priceTrends={priceTrends}

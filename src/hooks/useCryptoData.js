@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { fetchMarkets } from "../services/api";
 
 const CACHE_KEY = "coins_cache";
 const POLL_INTERVAL_MS = 10000;
+const REQUEST_TIMEOUT_MS = 8000;
 
 export default function useCryptoData({ vsCurrency = "usd" } = {}) {
   const [data, setData] = useState([]);
@@ -11,13 +12,41 @@ export default function useCryptoData({ vsCurrency = "usd" } = {}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
+  const inFlightRef = useRef(false);
 
   const cacheKey = useMemo(
     () => `${CACHE_KEY}_${String(vsCurrency || "usd").toLowerCase()}`,
     [vsCurrency]
   );
 
-  const fetchData = useCallback(async (showLoading = false) => {
+  useEffect(() => {
+    const cached = localStorage.getItem(cacheKey);
+    if (!cached) {
+      setData([]);
+      setPreviousData([]);
+      setLoading(true);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(cached);
+      if (!Array.isArray(parsed)) throw new Error("Invalid cache payload");
+      setData(parsed);
+      setPreviousData(parsed);
+      setLoading(false);
+      setError("");
+      setLastUpdated(new Date().toISOString());
+    } catch {
+      localStorage.removeItem(cacheKey);
+      setData([]);
+      setPreviousData([]);
+      setLoading(true);
+    }
+  }, [cacheKey]);
+
+  const fetchData = useCallback(async (showLoading = false, force = false) => {
+    if (inFlightRef.current && !force) return;
+    inFlightRef.current = true;
     if (showLoading) setLoading(true);
 
     try {
@@ -36,6 +65,7 @@ export default function useCryptoData({ vsCurrency = "usd" } = {}) {
         const fallback = await axios.get(
           "https://api.coingecko.com/api/v3/coins/markets",
           {
+            timeout: REQUEST_TIMEOUT_MS,
             params: {
               vs_currency: currency,
               order: "market_cap_desc",
@@ -51,19 +81,33 @@ export default function useCryptoData({ vsCurrency = "usd" } = {}) {
         });
         localStorage.setItem(cacheKey, JSON.stringify(fallback.data));
         setLastUpdated(new Date().toISOString());
-        setError("Backend unavailable. Showing direct market feed.");
+        // Fallback is still a valid live feed, so don't show an error state in UI.
+        setError("");
       } catch {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          setData(JSON.parse(cached));
-          setLastUpdated(new Date().toISOString());
-          setError("Live data unavailable. Showing last cached data.");
+          try {
+            const parsed = JSON.parse(cached);
+            if (!Array.isArray(parsed)) throw new Error("Invalid cache payload");
+            setData((prev) => {
+              setPreviousData(prev);
+              return parsed;
+            });
+            setLastUpdated(new Date().toISOString());
+            // Cached data is a degraded mode, but not a blocking error for the page.
+            setError("");
+          } catch {
+            localStorage.removeItem(cacheKey);
+            setData([]);
+            setError("Unable to load coin data. Please try again.");
+          }
         } else {
           setData([]);
           setError("Unable to load coin data. Please try again.");
         }
       }
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   }, [cacheKey, vsCurrency]);
@@ -86,6 +130,6 @@ export default function useCryptoData({ vsCurrency = "usd" } = {}) {
     loading,
     error,
     lastUpdated,
-    retry: () => fetchData(true),
+    retry: () => fetchData(true, true),
   };
 }

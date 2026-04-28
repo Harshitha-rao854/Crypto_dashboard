@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const cache = new Map();
+const inFlight = new Map();
 const TTL_MS = 10000;
 const MAX_RETRIES = 3;
 
@@ -37,9 +38,20 @@ async function fromCache(key, loader) {
   const hit = cache.get(key);
   if (hit && now - hit.time < TTL_MS) return hit.data;
 
-  const data = await loader();
-  cache.set(key, { time: now, data });
-  return data;
+  const running = inFlight.get(key);
+  if (running) return running;
+
+  const loadPromise = loader()
+    .then((data) => {
+      cache.set(key, { time: Date.now(), data });
+      return data;
+    })
+    .finally(() => {
+      inFlight.delete(key);
+    });
+
+  inFlight.set(key, loadPromise);
+  return loadPromise;
 }
 
 export async function getMarkets() {
