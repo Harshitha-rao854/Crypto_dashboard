@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 ## Crypto Market Dashboard
 
 High-fidelity crypto market dashboard built with **React + Vite**, **Tailwind CSS**, and **Recharts**, backed by **CoinGecko** (via a small local proxy API).
@@ -113,3 +114,6 @@ Backend CoinGecko calls include a small retry strategy for rate limits and trans
 =======
 # Crypto_dashboard
 >>>>>>> e1428301b26f144fb4604c494396416e26ee7142
+=======
+
+>>>>>>> adc17c3a157622578d95b441d7f498d2ee132cbf
