@@ -38,34 +38,34 @@ export async function fetchMarkets({ vsCurrency } = {}) {
 }
 
 export async function fetchCoinDetails(coinId, { vsCurrency, days } = {}) {
-  const params = {};
-  if (vsCurrency) params.vs_currency = vsCurrency;
-  if (days) params.days = days;
+  const currency = String(vsCurrency || "usd").toLowerCase();
+  const safeDays = days || 30;
 
   try {
+
     const { data } = await api.get(`/coins/${coinId}/details`, {
-      params: Object.keys(params).length ? params : undefined,
+      params: { vs_currency: currency, days: safeDays },
       timeout: REQUEST_TIMEOUT_MS,
     });
     return data;
   } catch {
-    // Client-side fallback keeps details page usable when backend is slow/unavailable.
-    const currency = String(vsCurrency || "usd").toLowerCase();
-    const parsedDays = Number(days);
-    const safeDays = Number.isFinite(parsedDays) ? Math.min(365, Math.max(1, parsedDays)) : 30;
-
-    const [detailsRes, historyRes] = await Promise.all([
-      axios.get(`https://api.coingecko.com/api/v3/coins/${coinId}`, {
-        timeout: REQUEST_TIMEOUT_MS,
-      }),
-      axios.get(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart`, {
+    
+    const historyRes = await axios.get(
+      `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart`,
+      {
         params: { vs_currency: currency, days: safeDays },
         timeout: REQUEST_TIMEOUT_MS,
-      }),
-    ]);
+      }
+    );
 
-    return {
-      details: {
+    let details = {};
+    try {
+      const detailsRes = await axios.get(
+        `https://api.coingecko.com/api/v3/coins/${coinId}`,
+        { timeout: REQUEST_TIMEOUT_MS }
+      );
+
+      details = {
         id: detailsRes.data.id,
         name: detailsRes.data.name,
         symbol: detailsRes.data.symbol,
@@ -73,16 +73,31 @@ export async function fetchCoinDetails(coinId, { vsCurrency, days } = {}) {
         description: detailsRes.data.description?.en || "",
         links: {
           homepage: detailsRes.data.links?.homepage?.[0] || "",
-          blockchain_site: detailsRes.data.links?.blockchain_site?.filter(Boolean) || [],
+          blockchain_site:
+            detailsRes.data.links?.blockchain_site?.filter(Boolean) || [],
         },
         market_data: detailsRes.data.market_data,
-      },
-      chart: historyRes.data,
+      };
+    } catch {
+      
+      details = {
+        id: coinId,
+        name: coinId,
+        symbol: coinId,
+        image: "",
+        description: "",
+        links: { homepage: "", blockchain_site: [] },
+        market_data: {},
+      };
+    }
+
+    return {
+      details,
+      chart: historyRes.data, 
       meta: { vs_currency: currency, days: safeDays },
     };
   }
 }
-
 export async function fetchCoinProfile(coinId) {
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   let lastError;
@@ -96,9 +111,11 @@ export async function fetchCoinProfile(coinId) {
     } catch (error) {
       lastError = error;
       try {
-        const { data } = await axios.get(`https://api.coingecko.com/api/v3/coins/${coinId}`, {
-          timeout: REQUEST_TIMEOUT_MS,
-        });
+        const { data } = await axios.get(
+          `https://api.coingecko.com/api/v3/coins/${coinId}`,
+          { timeout: REQUEST_TIMEOUT_MS }
+        );
+
         return {
           id: data.id,
           name: data.name,

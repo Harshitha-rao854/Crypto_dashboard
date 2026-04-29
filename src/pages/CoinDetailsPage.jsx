@@ -55,9 +55,7 @@ function writeCachedProfile(coinId, details) {
       },
     };
     localStorage.setItem(getProfileCacheKey(coinId), JSON.stringify(profile));
-  } catch {
-    // Ignore profile cache write failures.
-  }
+  } catch {}
 }
 
 function readCachedDetails(cacheKey) {
@@ -258,7 +256,11 @@ export default function CoinDetailsPage() {
   const isSnapshotChart = payload?.meta?.source === "markets_snapshot";
   const isRangeMismatch =
     Number.isFinite(payloadDays) && Number.isFinite(Number(days)) && payloadDays !== Number(days);
-  const hasChartData = chartData.length > 0 && !isRangeMismatch;
+  const hasChartData = chartData.length > 0;
+
+  if (isRangeMismatch) {
+    console.warn("Range mismatch: showing available data");
+  }
   const hasVolumeData = chartData.some((point) => Number(point.volume) > 0);
   const canRenderVolume = showVolume && !isSnapshotChart && hasVolumeData;
   const cleanDescription = (payload?.details?.description || "").replace(/<[^>]+>/g, "").trim();
